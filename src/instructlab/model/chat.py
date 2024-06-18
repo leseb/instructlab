@@ -28,7 +28,7 @@ import openai
 from instructlab import client
 from instructlab import configuration as cfg
 from instructlab import utils
-from instructlab.server import is_temp_server_running
+from instructlab.model.backends.server import is_temp_server_running
 
 # Local
 from ..utils import get_sysprompt, http_client
@@ -168,15 +168,15 @@ def chat(
     """Run a chat using the modified model"""
     # pylint: disable=C0415
     # First Party
-    from instructlab.server import ensure_server
+    from instructlab.model.backends.server import ensure_server
 
     if endpoint_url:
         api_base = endpoint_url
-        server_process = None
-        server_queue = None
+        backend_server = None
     else:
         try:
-            server_process, api_base, server_queue = ensure_server(
+            backend_server = None
+            backend_server = ensure_server(
                 ctx.obj.logger,
                 ctx.obj.config.serve,
                 tls_insecure,
@@ -188,7 +188,9 @@ def chat(
         except Exception as exc:
             click.secho(f"Failed to start server: {exc}", fg="red")
             raise click.exceptions.Exit(1)
-        if not api_base:
+        if backend_server:
+            api_base = backend_server.api_base
+        else:
             api_base = ctx.obj.config.serve.api_base()
 
     # if only the chat is running (`ilab chat`) and the temp server is not, the chat interacts
@@ -255,11 +257,8 @@ def chat(
         click.secho(f"Executing chat failed with: {exc}", fg="red")
         raise click.exceptions.Exit(1)
     finally:
-        if server_process and server_queue:
-            server_process.terminate()
-            server_process.join(timeout=30)
-            server_queue.close()
-            server_queue.join_thread()
+        if backend_server:
+            backend_server.shutdown()
 
 
 class ChatException(Exception):
