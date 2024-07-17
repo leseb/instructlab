@@ -326,8 +326,10 @@ class ConsoleChatBot:  # pylint: disable=too-many-instance-attributes
             f" ({session_name})" if new else ""
         )
         self._sys_print(
+            # We use the basename of the model path as the model name
+            # to avoid showing the full path in the chat
             Markdown(
-                f"Welcome to InstructLab Chat w/ **{self.model.upper()}**"
+                f"Welcome to InstructLab Chat w/ **{os.path.basename(self.model.upper())}**"
                 + side_info_str
             )
         )
